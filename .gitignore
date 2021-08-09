@@ -1,0 +1,4 @@
+botconfig.toml
+*.db
+.vscode
+__pycache__
