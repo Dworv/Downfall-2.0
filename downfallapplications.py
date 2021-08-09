@@ -12,6 +12,7 @@ from discord_slash.utils.manage_components import wait_for_component
 
 import sqlite3
 import datetime
+import botconfig
 
 client = discord.Client(intents=discord.Intents.all())
 slash = SlashCommand(client, sync_commands=True)
@@ -122,4 +123,5 @@ async def copy(ctx, link):
 
     await ctx.send("Thanks for applying! We will get back to you as soon as we can.")
 
-client.run("ODcwODE5ODc4MzY4NjAwMDY2.YQSUNg.EcqaDvBqDJbJJCCrE8c0DpRiBxQ")
+secret = botconfig.load_secret("botconfig.toml", "app")
+client.run(secret)

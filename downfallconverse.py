@@ -11,6 +11,7 @@ import time
 from discord.ext import tasks
 from discord_slash.utils.manage_commands import create_permission
 from discord_slash.model import SlashCommandPermissionType
+import botconfig
 
 print("Bot Running!")
 
@@ -181,4 +182,5 @@ async def resources(ctx):
 
     
 
-client.run("ODcwODE5NTUxMTI4OTg5NzU3.YQST6A.diZSReUkexw0cUVqjo1o_04IuMU")
+secret = botconfig.load_secret("botconfig.toml", "converse")
+client.run(secret)

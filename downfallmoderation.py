@@ -15,6 +15,7 @@ import asyncio
 import sqlite3
 import datetime
 from profanityfilter import ProfanityFilter
+import botconfig
 
 con = sqlite3.connect("C:/Users/Ryan/editing/coding/muted_user_list_xgw.db")
 c = con.cursor()
@@ -525,5 +526,5 @@ async def ban(ctx, user, reason):
     
 
 
-
-client.run("ODcwODIwMDIyNjUyNjQ1Mzk3.YQSUWA.l0FKrQRJl9Gr1mu1W7ZfZjXg4sk")
+secret = botconfig.load_secret("botconfig.toml", "mod")
+client.run(secret)
