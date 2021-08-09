@@ -1,0 +1,6 @@
+# Downfall Editing's Discord Bot Scripts
+
+There are three bots here so far...
+
+** Application Bot **
+...
