@@ -15,11 +15,12 @@ import datetime
 import botconfig
 import validators
 
-
 client = discord.Client(intents=discord.Intents.all())
 slash = SlashCommand(client, sync_commands=True)
 
-#### for connecting ### -----------------------------------------------------
+#### for connecting ### ----------------------------------------------###
+### ------------------------------------------------------------------###
+### ------------------------------------------------------------------###
 
 con = sqlite3.connect("C:/Users/Ryan/editing/Downfall_Editing_Bots/applications_database_pbx.db")
 c = con.cursor()
@@ -35,49 +36,42 @@ async def on_connect():
 async def on_ready():
     print('Bot Ready!')
     await client.change_presence(status=discord.Status.online, activity=discord.Streaming(name="YouTube", url="https://www.youtube.com/watch?v=QtBDL8EiNZo", details="Apply today!"))
-    guild = client.get_guild(848362097968283668)
+    global guild
+    client.guild = client.get_guild(848362097968283668)
 
-    app_guide_channel = client.get_channel(867873920551485450)
-    app_review_channel = client.get_channel(867888747877629972)
+    client.app_guide_channel = client.get_channel(867873920551485450)
 
-    owner_role = discord.utils.get (guild.roles, id = 848379997119184916)
-    downfall_role = guild.get_role(859301187106766878)
-    reviewer_role = guild.get_role(848396601802096671)
-    level_3_role = guild.get_role(848392622161657917)
-    level_2_role = guild.get_role(848392734364794901)
-    level_1_role = guild.get_role(848392980531380275)
-    member_role = guild.get_role(858942951980138496)
-    user_role = guild.get_role(849330016458113035)
-    everyone_role = guild.get_role(848362097968283668)
+    client.app_review_channel = client.get_channel(867888747877629972)
 
+    client.app_reviewing_channel = client.get_channel(867883406687469569)
 
+    client.owner_role = client.guild.get_role(848379997119184916)
 
-### for connecting ^^^^ ### --------------------------------------------------
+    client.downfall_role = client.guild.get_role(859301187106766878)
 
-### quick variables ### ----------------------------------
+    client.reviewer_role = client.guild.get_role(848396601802096671)
 
-guild = None
+    client.level_3_role = client.guild.get_role(848392622161657917)
 
-app_guide_channel = None
-app_review_channel = None
+    client.level_2_role = client.guild.get_role(848392734364794901)
 
-owner_role = None
-downfall_role = None
-reviewer_role = None
-level_3_role = None
-level_2_role = None
-level_1_role = None
-member_role = None
-user_role = None
-everyone_role = None
+    client.level_1_role = client.guild.get_role(848392980531380275)
+
+    client.member_role = client.guild.get_role(858942951980138496)
+
+    client.user_role = client.guild.get_role(849330016458113035)
+ 
+    client.everyone_role = client.guild.get_role(848362097968283668)
 
 owner_id = 848379997119184916
-reviewer_id =848396601802096671
+reviewer_id = 848396601802096671
 everyone_id = 848362097968283668
 
 guild_ids = [848362097968283668]
 
-### funtions! ### ----------------------------------------------------
+### funtions! ### ----------------------------------------------------###
+### ------------------------------------------------------------------###
+### ------------------------------------------------------------------###
 
 def basic_embed(text):
     embed = discord.Embed(description=text, colour=discord.Colour.purple())
@@ -117,10 +111,12 @@ async def new_application_inform_reviewers(info):
 
     embed = review_report_embed(ticket, user, link)
 
-    app_reviewing_channel = client.get_channel(867883406687469569)
-    await app_reviewing_channel.send(embed=embed)
+    
+    await client.app_reviewing_channel.send(embed=embed)
 
-### commands! ### ----------------------------------------------------
+### commands! ### ----------------------------------------------------###
+### ------------------------------------------------------------------###
+### ------------------------------------------------------------------###
 
 @slash.slash(name="copy", description="Copies what you say!", permissions={848362097968283668:
                      [
