@@ -13,13 +13,17 @@ from discord_slash.utils.manage_components import wait_for_component
 import sqlite3
 import datetime
 import botconfig
+import validators
+
 
 client = discord.Client(intents=discord.Intents.all())
 slash = SlashCommand(client, sync_commands=True)
 
-
-
 #### for connecting ### -----------------------------------------------------
+
+con = sqlite3.connect("C:/Users/Ryan/editing/Downfall_Editing_Bots/applications_database_pbx.db")
+c = con.cursor()
+print("Database Online...")
 
 print("Bot Running...")
 
@@ -46,9 +50,7 @@ async def on_ready():
     user_role = guild.get_role(849330016458113035)
     everyone_role = guild.get_role(848362097968283668)
 
-con = sqlite3.connect("C:/Users/Ryan/editing/coding/applications_database_pbx.db")
-c = con.cursor()
-print("Database Online...")
+
 
 ### for connecting ^^^^ ### --------------------------------------------------
 
@@ -77,15 +79,46 @@ guild_ids = [848362097968283668]
 
 ### funtions! ### ----------------------------------------------------
 
+def basic_embed(text):
+    embed = discord.Embed(description=text, colour=discord.Colour.purple())
+    return embed
+
+def review_report_embed(ticket, user, link):
+    text = f"Ticket: {ticket} \n User: {user} \n Link: {link}"
+    embed = discord.Embed(title="A new application has been submitted!",description=text, colour=discord.Colour.purple())
+    return embed
+
 def new_application_db_update(user, link):
     
-    table_insert = ["faketicket", "fakeuser_id", "fakelink", "fakestatus", "fakedate"]
-    c.execute("INSERT INTO applications_pbx VALUES (?,?,?,?,?)", table_insert)
+    valid=validators.url(link)
+    if valid == False:
+        return "invalid_link"
+
+    c.execute("SELECT MAX(ticket) FROM applications_pbx")
+
+    old_ticket = c.fetchall()
+    old_ticket_int = int(old_ticket[0][0])
+    ticket = old_ticket_int + 1
+
+    user_id = user.id
+
+    now = datetime.datetime.now()
+
+    table_insert = [ticket, user_id, link, "pending", now]
+    c.execute("INSERT INTO applications_pbx VALUES (?,?,?,?,?)", [table_insert[0],table_insert[1],table_insert[2],table_insert[3],table_insert[4]])
     con.commit()
 
+    return table_insert
 
-def new_application_inform_reviewers(user, link):
-    print("reviewers informed...")
+async def new_application_inform_reviewers(info):
+    ticket = info[0]
+    user = client.get_user(info[1])
+    link = info[2]
+
+    embed = review_report_embed(ticket, user, link)
+
+    app_reviewing_channel = client.get_channel(867883406687469569)
+    await app_reviewing_channel.send(embed=embed)
 
 ### commands! ### ----------------------------------------------------
 
@@ -116,10 +149,12 @@ async def copy(ctx, text: str):
                  option_type=3,
                  required=True)])
 async def copy(ctx, link):
-    link_verify = new_application_db_update(ctx.author, link)
-    if link_verify == False:
+    update_return = new_application_db_update(ctx.author, link)
+    if update_return == "invalid_link":
+        await ctx.send("Sorry, that appears to be an invalid link. Please make sure to copy it directly from your browser.")
         return
-    new_application_inform_reviewers(ctx.author, link)
+
+    await new_application_inform_reviewers(update_return)
 
     await ctx.send("Thanks for applying! We will get back to you as soon as we can.")
 

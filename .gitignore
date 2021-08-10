@@ -2,3 +2,4 @@ botconfig.toml
 *.db
 .vscode
 __pycache__
+DiscordBot.py

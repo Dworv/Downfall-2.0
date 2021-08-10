@@ -182,5 +182,5 @@ async def resources(ctx):
 
     
 
-secret = botconfig.load_secret("botconfig.toml", "converse")
+secret = botconfig.load_secret("C:/Users/Ryan/editing/Downfall_Editing_Bots/botconfig.toml", "converse")
 client.run(secret)
