@@ -105,6 +105,10 @@ async def copy(ctx, text: str):
                   create_choice(
                     name="Resources",
                     value="re"
+                  ),
+                  create_choice(
+                    name="Info",
+                    value="i"
                   )
                 ]
                ),
@@ -120,17 +124,18 @@ async def copy(ctx, text: str):
                  option_type=5,
                  required=True,
                )
-             ])
-             
+             ])            
 async def Introduction(ctx, channel: str, content: str, embed: bool):
     if channel == "f":
-        channelid = 848394255810297858
+      channelid = 848394255810297858
     elif channel == "n":
-        channelid = 848626756746608670
+      channelid = 848626756746608670
     elif channel == "r":
-        channelid = 848393658029047848
+      channelid = 848393658029047848
     elif channel == "re":
-        channelid = 871105940861095987
+      channelid = 871105940861095987
+    elif channel == "i":
+      channelid = 848394255810297858
     else:
         await ctx.send("Something went wrong in converting the channel placeholder value into a channel id.")
     

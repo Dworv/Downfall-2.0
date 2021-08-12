@@ -9,11 +9,14 @@ from discord_slash.utils.manage_commands import create_option, create_choice
 from discord_slash.utils.manage_components import create_button, create_actionrow
 from discord_slash.model import ButtonStyle
 from discord_slash.utils.manage_components import wait_for_component
+from discord.ext import tasks
+
 
 import sqlite3
 import datetime
 import botconfig
 import validators
+import calendar
 
 client = discord.Client(intents=discord.Intents.all())
 slash = SlashCommand(client, sync_commands=True)
@@ -36,12 +39,12 @@ async def on_connect():
 async def on_ready():
     print('Bot Ready!')
     await client.change_presence(status=discord.Status.online, activity=discord.Streaming(name="YouTube", url="https://www.youtube.com/watch?v=QtBDL8EiNZo", details="Apply today!"))
-    global guild
     client.guild = client.get_guild(848362097968283668)
     client.app_guide_channel = client.get_channel(867873920551485450)
     client.app_review_channel = client.get_channel(867888747877629972)
     client.app_reviewing_channel = client.get_channel(867883406687469569)
     client.test_channel = client.get_channel(859178839127883797)
+    client.roster_channel = client.get_channel(875141941728272444)
     client.owner_role = client.guild.get_role(848379997119184916)
     client.downfall_role = client.guild.get_role(859301187106766878)
     client.reviewer_role = client.guild.get_role(848396601802096671)
@@ -53,6 +56,7 @@ async def on_ready():
     client.everyone_role = client.guild.get_role(848362097968283668)
 
 owner_id = 848379997119184916
+member_id = 858942951980138496
 reviewer_id = 848396601802096671
 everyone_id = 848362097968283668
 
@@ -137,11 +141,12 @@ async def review_db_update(ticket, status):
     if client.level_3_role in member.roles:
       member_role=3
 
+    int_status = 0
+
     if status != "d":
       int_status = int(status)
-    
-    if int_status <= member_role:
-      return "incorrect_role"
+      if int_status <= member_role:
+        return "incorrect_role"
 
     link = row[2]
 
@@ -200,10 +205,10 @@ async def publish_review(ctx, ticket, status, overview, pros, procons, cons, app
   procons_embed.add_field(name="***[ + ]***", value=pros.replace(", ","\n"), inline=True)
   procons_embed.add_field(name="***[+ / -]***", value=procons.replace(", ","\n"), inline=True)
   procons_embed.add_field(name="***[ - ]***", value=cons.replace(", ","\n"), inline=True)
-  await client.review_channel.send("---------------------")
-  await client.review_channel.send(embed=art_embed)
-  await client.review_channel.send(embed=overview_embed)
-  await client.review_channel.send(embed=procons_embed)
+  await client.app_review_channel.send("---------------------")
+  await client.app_review_channel.send(embed=art_embed)
+  await client.app_review_channel.send(embed=overview_embed)
+  await client.app_review_channel.send(embed=procons_embed)
 
 async def give_member_roles(user, status):
 
@@ -211,7 +216,7 @@ async def give_member_roles(user, status):
   member_roles = 0
 
   if status == "d":
-    return
+    return "fail"
   else:
     status = int(status)
 
@@ -222,9 +227,157 @@ async def give_member_roles(user, status):
   if status >= 3:
     await member.add_roles(client.level_3_role)
 
+async def full_reset_roster():
+
+  c.execute('DELETE FROM roster_pbx;',);
+  con.commit
+
+  for member in client.member_role.members:
+    userid = member.id
+    level = 0
+    if client.level_1_role in member.roles:
+      level = 1
+    if client.level_2_role in member.roles:
+      level = 2
+    if client.level_3_role in member.roles:
+      level = 3
+    if client.reviewer_role in member.roles:
+      level = 4
+    if client.owner_role in member.roles:
+      level = 5
+    name = member.name
+
+    table_insert = [userid, level, name]
+    c.execute("INSERT INTO roster_pbx VALUES (?,?,?,NULL,NULL)", [table_insert[0],table_insert[1],table_insert[2]])
+    con.commit()
+
+async def add_to_roster(user, status):
+  userid = user.id
+  status = int(status)
+  level = 0
+  if status == 1:
+    level = 1
+  if status == 2:
+    level = 2
+  if status == 3:
+    level = 3
+  if client.reviewer_role in user.roles:
+    level = 4
+  if client.owner_role in user.roles:
+    level = 5
+  name = user.name
+
+  table_insert = [userid, level, name]
+  c.execute("INSERT INTO roster_pbx VALUES (?,?,?,NULL,NULL)", [table_insert[0],table_insert[1],table_insert[2]])
+  con.commit()
+
+  await roster_update()
+
+def change_birthday(user, date):
+
+  userid = user.id
+
+  datestr = f"{date[0]},{date[1]}"
+
+  c.execute("UPDATE roster_pbx SET bday = (?) WHERE userid = (?)", [datestr, userid])
+  con.commit()
+
+async def roster_update():
+
+  await client.roster_channel.purge()
+
+  c.execute("SELECT * FROM roster_pbx WHERE rank = 5")
+  Owner_list = c.fetchall()
+  c.execute("SELECT * FROM roster_pbx WHERE rank = 4")
+  Reviewer_list = c.fetchall()
+  c.execute("SELECT * FROM roster_pbx WHERE rank = 3")
+  Level_3_list = c.fetchall()
+  c.execute("SELECT * FROM roster_pbx WHERE rank = 2")
+  Level_2_list = c.fetchall()
+  c.execute("SELECT * FROM roster_pbx WHERE rank = 1")
+  Level_1_list = c.fetchall()
+
+  formatted_list = f"▶️▶️▶️▶️▶️\n \n ***- R O S T E R -*** \n \n▶️▶️▶️▶️▶️\n\n\n"
+
+  formatted_list = f"{formatted_list}***OWNER:*** \n \n"
+  for owner in Owner_list:
+    link = owner[3]
+    if link == None:
+      link = "Use /updatelink to add your youtube channel!"
+    formatted_list = f"{formatted_list}**{owner[2]}** \n *Youtube:*  <{link}> \n"
+  formatted_list = f"{formatted_list}\n ***REVIEWERS:*** \n \n"
+  for reviewer in Reviewer_list:
+    link = reviewer[3]
+    if link == None:
+      link = "Use /updatelink to add your youtube channel!"
+    formatted_list = f"{formatted_list}**{reviewer[2]}** \n *Youtube:*  <{link}> \n"
+  formatted_list = f"{formatted_list}\n ***LEVEL 3:*** \n \n"
+  for level_3 in Level_3_list:
+    link = level_3[3]
+    if link == None:
+      link = "Use /updatelink to add your youtube channel!"
+    formatted_list = f"{formatted_list}**{level_3[2]}** \n *Youtube:*  <{link}> \n"
+  formatted_list = f"{formatted_list}\n ***LEVEL 2:*** \n \n"
+  for level_2 in Level_2_list:
+    link = level_2[3]
+    if link == None:
+      link = "Use /updatelink to add your youtube channel!"
+    formatted_list = f"{formatted_list}**{level_2[2]}** \n *Youtube:*  <{link}> \n"
+  formatted_list = f"{formatted_list}\n ***LEVEL 1:*** \n \n"
+  for level_1 in Level_1_list:
+    link = level_1[3]
+    if link == None:
+      link = "Use /updatelink to add your youtube channel!"
+    formatted_list = f"{formatted_list}**{level_1[2]}** \n *Youtube:*  <{link}> \n"
+  
+
+  await client.roster_channel.send(formatted_list)
+
+async def change_link(user, link):
+
+  userid = user.id
+
+  c.execute("UPDATE roster_pbx SET youtube = (?) WHERE userid = (?)", [link, userid])
+  con.commit()
+
+  await roster_update()
+
+async def change_name(user, name):
+
+  userid = user.id
+
+  c.execute("UPDATE roster_pbx SET name = (?) WHERE userid = (?)", [name, userid])
+  con.commit()
+
+  await roster_update()
+
+### loops! ### -------------------------------------------------------###
+### ------------------------------------------------------------------###
+### ------------------------------------------------------------------###
+
 ### commands! ### ----------------------------------------------------###
 ### ------------------------------------------------------------------###
 ### ------------------------------------------------------------------###
+
+@slash.slash(name="ResetRoster", description="Resets the roster.", permissions={848362097968283668:
+                     [
+                     create_permission(everyone_id, SlashCommandPermissionType.ROLE, False),
+                     create_permission(owner_id, SlashCommandPermissionType.ROLE, True)
+                     ]}, guild_ids=guild_ids)
+async def reset_roster(ctx):
+  await full_reset_roster()
+  embed = basic_embed("The roster has been reset!")
+  await ctx.send(embed=embed)
+
+@slash.slash(name="UpdateRoster", description="Updates the roster channel.", permissions={848362097968283668:
+                     [
+                     create_permission(everyone_id, SlashCommandPermissionType.ROLE, False),
+                     create_permission(owner_id, SlashCommandPermissionType.ROLE, True)
+                     ]}, guild_ids=guild_ids)
+async def reset_roster(ctx):
+  await roster_update()
+  embed = basic_embed("The roster channel has been manually updated!")
+  await ctx.send(embed=embed)
 
 @slash.slash(name="Apply", description=("APPLY TODAY YAAAAAAY"), guild_ids=guild_ids,
                      options=[
@@ -336,13 +489,180 @@ async def review(ctx, ticket, status, overview, pros, procons, cons):
 
     await publish_review(ctx, ticket, status, overview, pros, procons, cons, app_info)
 
+    embed = basic_embed(f"Ticket #{ticket} reviewed!")
+    await ctx.send(embed=embed)
+
     user = app_info[0]
 
-    await give_member_roles(user, status)
+    fail = await give_member_roles(user, status)
 
-    embed = basic_embed(f"Ticket #{ticket} reviewed!")
-    
+    if fail == "fail":
+      return
+
+    member = client.guild.get_member(user.id)
+
+    await add_to_roster(member, status)
+
+@slash.slash(name="UpdateBirthday", description="Updates birthday (Members only!)", permissions={848362097968283668:
+                     [
+                     create_permission(everyone_id, SlashCommandPermissionType.ROLE, False),
+                     create_permission(member_id, SlashCommandPermissionType.ROLE, True)
+                     ]}, guild_ids=guild_ids,
+                     options=[
+               create_option(
+                 name="month",
+                 description="Which month is your birthday?",    
+                 option_type=3,
+                 required=True,
+                 choices=[
+                  create_choice(
+                    name="January",
+                    value='1'),
+                  create_choice(
+                    name="Febuary",
+                    value='2'),
+                  create_choice(
+                    name="March",
+                    value='3'),
+                  create_choice(
+                    name="April",
+                    value='4'),
+                  create_choice(
+                    name="May",
+                    value='5'),
+                  create_choice(
+                    name="June",
+                    value='6'),
+                  create_choice(
+                    name="July",
+                    value='7'),
+                  create_choice(
+                    name="August",
+                    value='8'),
+                  create_choice(
+                    name="September",
+                    value='9'),
+                  create_choice(
+                    name="October",
+                    value='10'),
+                  create_choice(
+                    name="November",
+                    value='11'),
+                  create_choice(
+                    name="December",
+                    value='12'),
+                 ]
+                 ),
+               create_option(
+                 name="day",
+                 description="Please just enter it right, ok?",    
+                 option_type=4,
+                 required=True)])
+async def UpdateBirthday(ctx, month, day):
+  
+  month = int(month)
+
+  days = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+  valid = None
+
+  if 0 < day <= days[month]:
+    valid = True
+  else:
+    valid = False
+
+  if valid == False:
+    await ctx.send("Sorry, it looks like you entered that date wrong. Please make sure you have the day correct.")
+    return
+  else:
+    await ctx.send("Thanks for submitting your birthday!")
+
+  date = [month, day]
+
+  change_birthday(ctx.author, date)
+
+@slash.slash(name="UpdateLink", description="Updates youtube link (Members only!)", permissions={848362097968283668:
+                     [
+                     create_permission(everyone_id, SlashCommandPermissionType.ROLE, False),
+                     create_permission(member_id, SlashCommandPermissionType.ROLE, True)
+                     ]}, guild_ids=guild_ids,
+                     options=[
+               create_option(
+                 name="link",
+                 description="Link for your channel.",    
+                 option_type=3,
+                 required=True)])
+async def UpdateLink(ctx, link):
+  
+  valid=validators.url(link)
+  if valid != True:
+    embed = basic_embed("Sorry, it appears your link is invalid.")
     await ctx.send(embed=embed)
+    return
+  else:
+    await ctx.send("Thanks for submitting your youtube link!")
+
+  await change_link(ctx.author, link)
+
+@slash.slash(name="UpdateName", description="Updates your name in the database (Members only!)", permissions={848362097968283668:
+                     [
+                     create_permission(everyone_id, SlashCommandPermissionType.ROLE, False),
+                     create_permission(member_id, SlashCommandPermissionType.ROLE, True)
+                     ]}, guild_ids=guild_ids,
+                     options=[
+               create_option(
+                 name="name",
+                 description="Name that will be stored in the database and displayed in the roster.",    
+                 option_type=3,
+                 required=True)])
+async def UpdateName(ctx, name):
+  
+  embed = basic_embed("Thanks for updating your name!")
+  await ctx.send(embed = embed)
+
+  await change_name(ctx.author, name)
+
+@slash.slash(name="Birthday", description="Find out what a member's birthday is.", guild_ids=guild_ids, permissions={848362097968283668:
+                     [
+                     create_permission(everyone_id, SlashCommandPermissionType.ROLE, False),
+                     create_permission(member_id, SlashCommandPermissionType.ROLE, True)
+                     ]},options=[
+                     create_option(
+                 name="member",
+                 description="Which member would you like to find the birthday of?",    
+                 option_type=6,
+                 required=True)])
+async def birthday(ctx, member):
+
+  valid = None
+  if member in client.member_role.members:
+    valid = True
+  else:
+    embed = basic_embed("Sorry, it appears you have selecter a user who is not part of the roster.")
+    await ctx.send(embed=embed)
+    return
+  
+  userid = member.id
+
+  c.execute("SELECT * FROM roster_pbx WHERE userid = (?)", [userid])
+  row = c.fetchall()
+  row = row[0]  
+
+  if row[4] == None:
+    embed = basic_embed("Sorry, that user has not yet entered their birthday yet.")
+    await ctx.send(embed=embed)
+    return
+ 
+
+  birthdaystring = row[4]
+  birthdaylist = birthdaystring.split(",")
+  month = int(birthdaylist[0])
+  day = int(birthdaylist[1])
+
+  monthstr = calendar.month_name[month]
+
+  msg = f"{member.name}: {monthstr}, {day}"
+  embed = basic_embed(msg)
+  await ctx.send(embed = embed)
 
 secret = botconfig.load_secret("botconfig.toml", "app")
 client.run(secret)
