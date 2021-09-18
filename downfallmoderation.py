@@ -498,6 +498,7 @@ async def ban(ctx, user, reason):
     owner = discord.utils.get(ctx.guild.roles, id=owner_id)
     guild = client.get_guild(848362097968283668)
     
+    
     author_role = 0
     if i_admin in ctx.author.roles:
         author_role = 1

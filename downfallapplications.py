@@ -329,6 +329,7 @@ async def roster_update():
     if link == None:
       link = "Use /updatelink to add your youtube channel!"
     formatted_list = f"{formatted_list}**{level_1[2]}** \n *Youtube:*  <{link}> \n"
+  formatted_list = f"{formatted_list} \n \n*schtoopid was here*"
   
 
   await client.roster_channel.send(formatted_list)
@@ -351,6 +352,16 @@ async def change_name(user, name):
 
   await roster_update()
 
+async def change_account(olduser, newuser):
+  newuserid = newuser.id
+
+  print(newuserid)
+
+  #c.execute("UPDATE roster_pbx SET name = (?) WHERE userid = (?)", [name, userid])
+  #con.commit()
+
+  await roster_update()
+
 ### loops! ### -------------------------------------------------------###
 ### ------------------------------------------------------------------####
 ### ------------------------------------------------------------------###
@@ -359,25 +370,72 @@ async def change_name(user, name):
 ### ------------------------------------------------------------------###
 ### ------------------------------------------------------------------###
 
-@slash.slash(name="ResetRoster", description="Resets the roster.", permissions={848362097968283668:
+@slash.slash(name="RosterAdmin", description="Roster Administrator Commands", permissions={848362097968283668:
                      [
                      create_permission(everyone_id, SlashCommandPermissionType.ROLE, False),
                      create_permission(owner_id, SlashCommandPermissionType.ROLE, True)
-                     ]}, guild_ids=guild_ids)
-async def reset_roster(ctx):
-  await full_reset_roster()
-  embed = basic_embed("The roster has been reset!")
-  await ctx.send(embed=embed)
+                     ]}, guild_ids=guild_ids, options=[
+               create_option(
+                 name="command",
+                 description="What would you like to do?",    
+                 option_type=3,
+                 required=True,
+                 choices=[
+                  create_choice(
+                    name="Update",
+                    value='update'),
+                  create_choice(
+                    name="Reset",
+                    value='reset'),
+                  create_choice(
+                    name="UpdateAccount",
+                    value="updateacc")]),
+               create_option(
+                 name="input",
+                 description="What input are you inputting??",    
+                 option_type=3,
+                 required=False),
+               create_option(
+                 name="user",
+                 description="Which profile do you want to edit",    
+                 option_type=6,
+                 required=False,
+                 )])
+async def rosteradmin(ctx, command, input=None, user=None):
+  if command == "update":
+    await roster_update()
+    embed = basic_embed("The roster channel has been manually updated!")
+    await ctx.send(embed=embed)
+  elif command == "reset":
+    await full_reset_roster()
+    embed = basic_embed("The roster has been reset!")
+    await ctx.send(embed=embed)
+  elif command == "updateacc":
+    await change_account(user, input)
+    ctx.send("it worked sort of")
+  else:
+    embed = basic_embed("Sorry, it appears we are having trouble proccessing which command you picked. Please try again later.")
+    await ctx.send(embed=embed)
 
-@slash.slash(name="UpdateRoster", description="Updates the roster channel.", permissions={848362097968283668:
-                     [
-                     create_permission(everyone_id, SlashCommandPermissionType.ROLE, False),
-                     create_permission(owner_id, SlashCommandPermissionType.ROLE, True)
-                     ]}, guild_ids=guild_ids)
-async def reset_roster(ctx):
-  await roster_update()
-  embed = basic_embed("The roster channel has been manually updated!")
-  await ctx.send(embed=embed)
+#@slash.slash(name="ResetRoster", description="Resets the roster.", permissions={848362097968283668:
+#                     [
+#                     create_permission(everyone_id, SlashCommandPermissionType.ROLE, False),
+#                     create_permission(owner_id, SlashCommandPermissionType.ROLE, True)
+#                     ]}, guild_ids=guild_ids)
+#async def reset_roster(ctx):
+#  await full_reset_roster()
+#  embed = basic_embed("The roster has been reset!")
+#  await ctx.send(embed=embed)
+
+#@slash.slash(name="UpdateRoster", description="Updates the roster channel.", permissions={848362097968283668:
+#                     [
+#                     create_permission(everyone_id, SlashCommandPermissionType.ROLE, False),
+#                     create_permission(owner_id, SlashCommandPermissionType.ROLE, True)
+#                     ]}, guild_ids=guild_ids)
+#async def reset_roster(ctx):
+#  await roster_update()
+#  embed = basic_embed("The roster channel has been manually updated!")
+#  await ctx.send(embed=embed)
 
 @slash.slash(name="Apply", description=("APPLY TODAY YAAAAAAY"), guild_ids=guild_ids,
                      options=[
@@ -664,5 +722,5 @@ async def birthday(ctx, member):
   embed = basic_embed(msg)
   await ctx.send(embed = embed)
 
-secret = botconfig.load_secret("botconfig.toml", "app")
+secret = botconfig.load_secret("C:/Users/Ryan/editing/Downfall_Editing_Bots/botconfig.toml", "app")
 client.run(secret)
