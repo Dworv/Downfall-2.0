@@ -373,7 +373,7 @@ async def resources(ctx):
     await ctx.send(embed=embed, components=[create_actionrow(select)])
 
 #apply command
-@slash.slash(name="testapply", description=("dont use this"), guild_ids=guild_ids,
+@slash.slash(name="apply", description=("dont use this"), guild_ids=guild_ids,
                      options=[
                create_option(
                  name="link",
@@ -619,7 +619,7 @@ async def profile_link(ctx, link):
     c.execute("UPDATE roster SET youtube = (?) WHERE user_id = (?)", [link, ctx.author.id])
     con.commit()
     await regenerate_roster_embeds()
-    
+
 ######################################################################################################
 
 #secret
