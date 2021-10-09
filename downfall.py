@@ -35,10 +35,20 @@ async def on_ready():
     client.user_count_channel = client.server.get_channel(871150395932672020)
     client.member_count_channel = client.server.get_channel(871150597229936672)
     client.join_channel = client.server.get_channel(848567465281978399)
+    client.review_channel = client.server.get_channel(867888747877629972)
+    client.reviewing_channel = client.server.get_channel(867883406687469569)
+    client.staff_chat_channel = client.server.get_channel(848393658029047849)
 
     client.owner_role = client.server.get_role(848379997119184916)
     client.user_role = client.server.get_role(849330016458113035)
     client.member_role = client.server.get_role(858942951980138496)
+    client.level_1_role = client.server.get_role(848392980531380275)
+    client.level_2_role = client.server.get_role(848392734364794901)
+    client.level_3_role = client.server.get_role(848392622161657917)
+    client.oitc_role = client.server.get_role(895185551429369877)
+    client.fan_role = client.server.get_role(895185993450287144)
+    client.minor_ping_role = client.server.get_role(895185993450287144)
+
 
 #count updates
 @tasks.loop(minutes=6)
@@ -77,11 +87,9 @@ def generate_help_components():
     c.execute("SELECT * FROM resources")
     commandCount = len(c.fetchall())
     pageCount = commandCount//4
-    if commandCount % 4 != 0: 
-        pageCount += 1
     optionList = []
     for page in range(1, pageCount+1):
-        optionList.append(create_select_option(f"Page {page}", str(page), emoji="1️⃣"))
+        optionList.append(create_select_option(f"Page {page}", str(page)))
     return optionList
 
 def generate_help_embed(page: int):
@@ -104,6 +112,39 @@ def generate_help_embed(page: int):
         embedDescription = f"{embedDescription}\n\n**{name}**\n`{description}`"
 
     return discord.Embed(title = f"Page: {raw_page}", description = embedDescription)
+
+def generate_role_content():
+    embed = discord.Embed(title="Roles", description="GET YOUR ROLES HERE!!!!")
+    buttons = []
+    role_list = [
+                    {
+                        "name": "OITC Troop",
+                        "desc": "All the people that want to get pinged for OITC.",
+                        "id": 895185551429369877,
+                        "cid": "6901",
+                        "color": ButtonStyle.red
+                    },
+                    {
+                        "name": "Downfall Fans",
+                        "desc": "Epic role take it its free.",
+                        "id": 895185993450287144,
+                        "cid": "6902",
+                        "color": ButtonStyle.blue
+                    },
+                    {
+                        "name": "Minor Pings",
+                        "desc": "You will be pinged exessively. DO IT.",
+                        "id": 895185993450287144,
+                        "cid": "6903",
+                        "color": ButtonStyle.green
+                    },
+                ]
+    for role in role_list:
+        embed.add_field(name=role["name"], value=role["desc"], inline = False)
+        buttons.append(create_button(role["color"], role["name"], custom_id=role["cid"]))
+    [create_actionrow(buttons[0],buttons[1],buttons[2])]
+    return [embed,[create_actionrow(buttons[0],buttons[1],buttons[2])]]
+
 
 ##################################### --- commands --- ############################################
 
@@ -145,8 +186,68 @@ def build_command(verb, level_1 = None, level_2 = None, level_3 = None):
 async def on_component(ctx: ComponentContext):
     if ctx.custom_id == "12345":
         await ctx.edit_origin(embed = generate_help_embed(int(ctx.selected_options[0])))
-    if ctx.custom_id == "12346":
+    elif ctx.custom_id == "12346":
         await ctx.edit_origin(embed=generate_resource_embed(int(ctx.selected_options[0])))
+    elif ctx.custom_id == "6901":
+        if client.oitc_role not in ctx.author.roles:
+            await ctx.author.add_roles(client.oitc_role)
+            embed = sembed("Role Added", "You have been granted the OITC Troop role!", "success")
+            await ctx.send(embed=embed, hidden=True)
+        else:
+            await ctx.author.remove_roles(client.oitc_role)
+            embed = sembed("Role Removed", "You have been stripped of the OITC Troop role.", "success")
+            await ctx.send(embed=embed, hidden=True)
+    elif ctx.custom_id == "6902":
+        if client.fan_role not in ctx.author.roles:
+            await ctx.author.add_roles(client.fan_role)
+            embed = sembed("Role Added", "You have been granted the Downfall Fan role!", "success")
+            await ctx.send(embed=embed, hidden=True)
+        else:
+            await ctx.author.remove_roles(client.fan_role)
+            embed = sembed("Role Removed", "You have been stripped of the Downfall Fan role. I guess you aren't a fan anymore?", "success")
+            await ctx.send(embed=embed, hidden=True)
+    elif ctx.custom_id == "6903":
+        if client.minor_ping_role not in ctx.author.roles:
+            await ctx.author.add_roles(client.minor_ping_role)
+            embed = sembed("Role Added", "You have been granted the Minor Pings role!", "success")
+            await ctx.send(embed=embed, hidden=True)
+        else:
+            await ctx.author.remove_roles(client.minor_ping_role)
+            embed = sembed("Role Removed", "You have been stripped of the Minor Pings role. The pain is over.", "success")
+            await ctx.send(embed=embed, hidden=True)
+    
+
+#new-help command
+@slash.subcommand(base="new", name="command", description="A command to add a command to the help menu.", guild_ids=guild_ids, options=[
+            create_option(name="name", description="What will the new resource be called?", option_type=3,required=True),
+            create_option(name="description", description="The description of the command.", option_type=3,required=True)
+            ])
+async def new_help(ctx, name, description):
+    if client.owner_role not in ctx.author.roles:
+        await qembed("Interaction Failed", "You do not have clearance to utilize this command.", "fail", ctx)
+        return
+    c.execute(f"SELECT * FROM commands WHERE Name = (?)", [name])
+    if c.fetchall() != []:
+        await qembed("Interaction Failed", "It appears that name has already been taken.", "fail", ctx)
+        return
+    c.execute("INSERT INTO commands VALUES (?,?)", [name, description])
+    con.commit()
+    await qembed("Command added successfully", f"Name: `{name}`, Description: `{description}`", "success", ctx)
+
+#remove-help command
+@slash.subcommand(base="remove", name="command", description="*Bruh moment*", 
+                    guild_ids=guild_ids, options=[create_option(name="name", description="The name of the target.", option_type=3,required=True)])
+async def remove_command(ctx, name):
+    if client.owner_role not in ctx.author.roles:
+        await qembed("Interaction Failed", "You do not have clearance to utilize this command.", "fail", ctx)
+        return
+    c.execute(f"SELECT * FROM commands WHERE Name = (?)", [name])
+    if c.fetchall() == []:
+        await qembed("Interaction Failed", "It appears a command with that name does not exist.", "fail", ctx)
+        return
+    c.execute("DELETE FROM commands WHERE Name = (?)", [name])
+    con.commit()
+    await qembed("Command removed successfully", f"Command with Name: `{name}` has been removed from the help menu.", "success", ctx)
 
 #help command
 @slash.slash(name="help", description="A very helpful command...", guild_ids=guild_ids)
@@ -161,7 +262,7 @@ async def help(ctx):
                 custom_id=12345
                 ))])
 
-#add-resourse command
+#new-resourse command
 @slash.subcommand(base="new", name="resource", description="A command to make a new resource.", guild_ids=guild_ids, options=[
             create_option(name="name", description="What will the new resource be called?", option_type=3,required=True),
             create_option(name="link", description="The link to the resource", option_type=3,required=True),
@@ -219,6 +320,161 @@ async def resources(ctx):
         ], placeholder="Type:", min_values=0, max_values=1, custom_id=12346
         )
     await ctx.send(embed=embed, components=[create_actionrow(select)])
+
+#apply command
+@slash.slash(name="testapply", description=("dont use this"), guild_ids=guild_ids,
+                     options=[
+               create_option(
+                 name="link",
+                 description="Link to your application!",    
+                 option_type=3,
+                 required=True),
+               create_option(
+                 name="prerecs",
+                 description="Did you get your clips from someone else? Be honest, you can still get accepted.",    
+                 option_type=3,
+                 required=True,
+                 choices=[
+                  create_choice(
+                    name="No",
+                    value='0'),
+                  create_choice(
+                    name="Yes",
+                    value='1')])
+                    ])
+async def apply(ctx,link,prerecs):
+    if not validators.url(link):
+        await qembed("Interaction Failed", "The link you submitted was invalid.", "fail", ctx)
+        return
+    
+    c.execute("SELECT MAX(ticket) FROM applications")
+    ticket = int(c.fetchall()[0][0]) + 1
+    try:
+        c.execute("INSERT INTO applications VALUES (?,?,?,?,?,?,NULL)", [ticket, ctx.author.id, link, int(prerecs), "p", datetime.datetime.now()])
+        con.commit()
+    except:
+        await qembed("Interaction Failed", "Sorry, it appears there has been a problem with accessing the application database. Please ping Dworv to ask for help.", "fail", ctx)
+        return
+    if prerecs == "1": prerecs = True
+    else: prerecs = False
+    
+    await client.reviewing_channel.send(f"{link}",embed=sembed("New Application!", f"Ticket: {ticket}\nLink: {link}\nUser: {ctx.author.name}\nPre-recs = {prerecs}", "ticket"))
+    await qembed("Application Successful", f"Thanks for applying! Your ticket is Ticket#{ticket}.", "success", ctx)
+
+#review command
+@slash.slash(name="Review",
+             description="DEAL THEM PAIN", guild_ids=guild_ids,
+             options=[
+               create_option(
+                 name="ticket",
+                 description="Enter the ticket on the application you would like to review",    
+                 option_type=4,
+                 required=True
+               ),
+               create_option(
+                 name="status",
+                 description="Make sure not to set it to something lower than they already are!",
+                 option_type=3,
+                 required=True,
+                 choices=[
+                    create_choice(name="Reapp", value='d'),
+                    create_choice(name="Level 1", value='1'),
+                    create_choice(name="Level 2", value='2'),
+                    create_choice(name="Level 3", value='3')
+                ]
+               ),
+               create_option(
+                 name="overview",
+                 description="Give an overview of your opinion of their edit. Be nice and start off with a compliment!",
+                 option_type=3,
+                 required=True),
+               create_option(
+                 name="pros",
+                 description="Seperate each with a comma with a space after it",
+                 option_type=3,
+                 required=True),
+               create_option(
+                 name="procons",
+                 description="Seperate each with a comma with a space after it",
+                 option_type=3,
+                 required=True),
+               create_option(
+                 name="cons",
+                 description="Seperate each with a comma with a space after it",
+                 option_type=3,
+                 required=True)
+             ])
+async def review(ctx, ticket, status, overview, pros, procons, cons):
+
+    c.execute("SELECT * FROM applications WHERE ticket = (?)", [ticket])
+    row = c.fetchall()
+    if row == []:
+        await qembed("Interaction Failed", "It appears that there are no applications with that ticket.", "fail", ctx)
+        return
+    row = row[0]
+    if row[4] != "p":
+        await qembed("Interaction Failed", "It appears that ticket has already been reviewed.", "fail", ctx)
+        return
+    member = client.server.get_member(row[1])
+    
+    link = row[2]
+    now = datetime.datetime.now()
+    c.execute("UPDATE applications SET revdate = (?) WHERE ticket = (?)", [now, ticket])
+    c.execute("UPDATE applications SET status = (?) WHERE ticket = (?)", [status, ticket])
+    con.commit()
+
+    if status != "d":
+        if int(status) >= 1: await member.add_roles(client.level_1_role)
+        if int(status) >= 2: await member.add_roles(client.level_2_role)
+        if int(status) >= 3: await member.add_roles(client.level_3_role)
+    
+    if status == "d":
+        colour = 0xa3a1a5
+        imgur = "https://i.imgur.com/JiNhix7.png"
+    elif status == "1":
+        colour = 0xa782df
+        imgur = "https://i.imgur.com/IqGUuza.png"
+    elif status == "2":
+        colour = 0x6724cd
+        imgur = "https://i.imgur.com/o8MxQ5x.png"
+    elif status == "3":
+        colour = 0x2f076c
+        imgur = "https://i.imgur.com/l2taa6w.png"
+
+    art_embed = discord.Embed(description=link, color=colour)
+    art_embed.set_image(url=imgur)
+    art_embed.set_author(name=f"Application by {member.name}", icon_url=member.avatar_url)
+
+    overview_embed = discord.Embed(title="Overview", description=overview, color=colour)
+    overview_embed.set_author(name=f"Review by {ctx.author.name}", icon_url=ctx.author.avatar_url)
+
+    procons_embed = discord.Embed(title="Pros & Cons:", color=colour)
+    procons_embed.add_field(name="***[ + ]***", value=pros.replace(", ","\n"), inline=True)
+    procons_embed.add_field(name="***[+ / -]***", value=procons.replace(", ","\n"), inline=True)
+    procons_embed.add_field(name="***[ - ]***", value=cons.replace(", ","\n"), inline=True)
+    
+    await client.reviewing_channel.send(embed=art_embed)
+    await client.reviewing_channel.send(embed=overview_embed)
+    await client.reviewing_channel.send(embed=procons_embed)
+    await qembed(f"Ticket #{ticket} reviewed!", "Thanks for reviewing!", "success", ctx)
+
+    if status != "d":
+        c.execute("SELECT * FROM roster WHERE user_id = (?)", [member.id])
+        if c.fetchall() == []:
+            c.execute("INSERT INTO roster VALUES (?,?,NULL,NULL,NULL)", [member.id, status])
+            con.commit()
+        else:
+            c.execute("UPDATE roster SET rank = (?)", [status])
+            con.commit()
+
+#roles command   
+@slash.slash(name="roles", description="Get all your roles here!", guild_ids=guild_ids)
+async def roles(ctx):
+    content = generate_role_content()
+    await ctx.send(embed=content[0], components=content[1])
+    
+
+
 
 ######################################################################################################
 
