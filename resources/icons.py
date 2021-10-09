@@ -1,0 +1,16 @@
+
+class icon:
+    success = "https://cdn-icons-png.flaticon.com/512/148/148767.png"
+    fail = "https://cdn-icons-png.flaticon.com/512/148/148766.png"
+    star = "https://cdn-icons-png.flaticon.com/512/148/148839.png"
+    play = "https://cdn-icons-png.flaticon.com/512/148/148744.png"
+    heart = "https://cdn-icons-png.flaticon.com/512/148/148838.png"
+    plus = "https://cdn-icons-png.flaticon.com/512/148/148781.png"
+    music = "https://cdn-icons-png.flaticon.com/512/148/148722.png"
+    pencil = "https://cdn-icons-png.flaticon.com/512/148/148926.png"
+    stack = "https://cdn-icons-png.flaticon.com/512/148/148825.png"
+    light = "https://cdn-icons-png.flaticon.com/512/148/148819.png"
+    note = "https://cdn-icons-png.flaticon.com/512/148/148966.png"
+    notes = "https://cdn-icons-png.flaticon.com/128/148/148957.png"
+    gear = "https://cdn-icons-png.flaticon.com/512/148/148914.png"
+    person = "https://cdn-icons-png.flaticon.com/512/149/149068.png"
