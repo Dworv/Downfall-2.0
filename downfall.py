@@ -1,3 +1,7 @@
+
+#todo:
+#add func for fails and successes
+
 from asyncio.windows_events import SelectorEventLoop
 import discord, botconfig, sqlite3, validators
 from discord_slash import *
@@ -25,6 +29,52 @@ async def qembed(main_text, sub_text, symbol, ctx):
     embed.set_author(name=main_text)
     return await ctx.send(embed = embed)
 
+async def regenerate_roster_embeds():
+    await client.roster_channel.purge()
+    embedList = []
+    levelDicts = [
+                    None,
+                    {
+                        "title":"Level 1",
+                        "desc":"Level 1 Members",
+                        "color":0xaf78f8
+                    },
+                    {
+                        "title":"Level 2",
+                        "desc":"Level 2 Members",
+                        "color":0x901ae4
+                    },
+                    {
+                        "title":"Level 3",
+                        "desc":"Level 3 Members",
+                        "color":0x540072
+                    },
+                    {
+                        "title":"Reviewers",
+                        "desc":"The Reviewers",
+                        "color":0x5d00cf
+                    },
+                    {
+                        "title":"Owner",
+                        "desc":"The Owner",
+                        "color":0x240020
+                    },
+                ]
+    for level in range(1,6):
+        c.execute("SELECT * FROM roster WHERE rank = (?)", [level])
+        rawList = c.fetchall()
+        levelDict = levelDicts[level]
+        embed = discord.Embed(title=levelDict["title"], description=levelDict["desc"], color=levelDict["color"])
+        for memberId, rank, customName, youtube, bDay in rawList:
+            member = client.get_user(int(memberId))
+            if customName != None:
+                name = customName
+            else:
+                name = member.name
+            embed.add_field(name=name, value=f"Youtube: {youtube}", inline = False)
+        embedList.append(embed)
+    return await client.roster_channel.send(embed=embedList[4]), await client.roster_channel.send(embed=embedList[3]), await client.roster_channel.send(embed=embedList[2]), await client.roster_channel.send(embed=embedList[1]), await client.roster_channel.send(embed=embedList[0])
+
 #start msg + client.vars
 @client.event
 async def on_ready():
@@ -38,6 +88,7 @@ async def on_ready():
     client.review_channel = client.server.get_channel(867888747877629972)
     client.reviewing_channel = client.server.get_channel(867883406687469569)
     client.staff_chat_channel = client.server.get_channel(848393658029047849)
+    client.roster_channel = client.server.get_channel(896267571278536756)
 
     client.owner_role = client.server.get_role(848379997119184916)
     client.user_role = client.server.get_role(849330016458113035)
@@ -49,6 +100,8 @@ async def on_ready():
     client.fan_role = client.server.get_role(895185993450287144)
     client.minor_ping_role = client.server.get_role(895185993450287144)
 
+    
+    await regenerate_roster_embeds()
 
 #count updates
 @tasks.loop(minutes=6)
@@ -145,7 +198,6 @@ def generate_role_content():
     [create_actionrow(buttons[0],buttons[1],buttons[2])]
     return [embed,[create_actionrow(buttons[0],buttons[1],buttons[2])]]
 
-
 ##################################### --- commands --- ############################################
 
 #subcommand builder
@@ -215,7 +267,6 @@ async def on_component(ctx: ComponentContext):
             await ctx.author.remove_roles(client.minor_ping_role)
             embed = sembed("Role Removed", "You have been stripped of the Minor Pings role. The pain is over.", "success")
             await ctx.send(embed=embed, hidden=True)
-    
 
 #new-help command
 @slash.subcommand(base="new", name="command", description="A command to add a command to the help menu.", guild_ids=guild_ids, options=[
@@ -424,6 +475,7 @@ async def review(ctx, ticket, status, overview, pros, procons, cons):
     con.commit()
 
     if status != "d":
+        await member.add_roles(client.member_role)
         if int(status) >= 1: await member.add_roles(client.level_1_role)
         if int(status) >= 2: await member.add_roles(client.level_2_role)
         if int(status) >= 3: await member.add_roles(client.level_3_role)
@@ -464,18 +516,110 @@ async def review(ctx, ticket, status, overview, pros, procons, cons):
             c.execute("INSERT INTO roster VALUES (?,?,NULL,NULL,NULL)", [member.id, status])
             con.commit()
         else:
-            c.execute("UPDATE roster SET rank = (?)", [status])
+            c.execute("UPDATE roster SET rank = (?) WHERE user_id = (?)", [status, member.id])
             con.commit()
 
-#roles command   
+#roles command
 @slash.slash(name="roles", description="Get all your roles here!", guild_ids=guild_ids)
 async def roles(ctx):
     content = generate_role_content()
     await ctx.send(embed=content[0], components=content[1])
+
+#profile name command
+@slash.subcommand(base="profile", name="name", description="An optional custom name for the roster.", 
+                    guild_ids=guild_ids, options=[create_option("name", "Enter your new name!", 3, True)])
+async def profile_name(ctx,name):
+    if client.member_role not in ctx.author.roles:
+        await qembed("Interaction Failed", "You need to be a server member to use this command!", "fail", ctx)
+        return
+    if len(name) > 16:
+        await qembed("Interaction Failed", "The maximum amount of characters is 16!", "fail", ctx)
+        return
+    c.execute("UPDATE roster SET custom_name = (?) WHERE user_id = (?)", [name, ctx.author.id])
+    con.commit()
+    await qembed("Name Updated!", f"You have changed your name to: `{name}`", "success", ctx)
+    await regenerate_roster_embeds()
     
+@slash.subcommand(base="profile", name="bday", description="Set your birthday!", 
+                    guild_ids=guild_ids, 
+                    options=[
+                        create_option("day", "Enter the day of your birthday.", 4, True),
+                        create_option("month", "Enter the month of your birthday.", 3, True, choices=[
+                  create_choice(
+                    name="January",
+                    value='1'),
+                  create_choice(
+                    name="Febuary",
+                    value='2'),
+                  create_choice(
+                    name="March",
+                    value='3'),
+                  create_choice(
+                    name="April",
+                    value='4'),
+                  create_choice(
+                    name="May",
+                    value='5'),
+                  create_choice(
+                    name="June",
+                    value='6'),
+                  create_choice(
+                    name="July",
+                    value='7'),
+                  create_choice(
+                    name="August",
+                    value='8'),
+                  create_choice(
+                    name="September",
+                    value='9'),
+                  create_choice(
+                    name="October",
+                    value='10'),
+                  create_choice(
+                    name="November",
+                    value='11'),
+                  create_choice(
+                    name="December",
+                    value='12'),
+                    ])
+                ])
+async def profile_birthday(ctx, month, day):
+    if client.member_role not in ctx.author.roles:
+        await qembed("Interaction Failed", "You need to be a server member to use this command!", "fail", ctx)
+        return
+    month = int(month)
+    days = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    if 0 < day <= days[month]:
+        valid = True
+    else:
+        valid = False
+    if valid == False:
+        await qembed("Interaction Failed", "Sorry, it looks like you entered that date wrong. Please make sure you have the day correctly inserted.", "fail", ctx)
+        return
+    c.execute("UPDATE roster SET birthday = (?) WHERE user_id = (?)", [f"{month},{day}", ctx.author.id])
+    con.commit()
+    await qembed("Birthday Updated!", "Thanks for updating your birthday!", "success", ctx)
 
-
-
+@slash.subcommand(base="profile", name="link", description="Updates your youtube link.", guild_ids=guild_ids,
+                     options=[
+               create_option(
+                 name="link",
+                 description="Link for your channel.",    
+                 option_type=3,
+                 required=True)])
+async def profile_link(ctx, link):
+    if client.member_role not in ctx.author.roles:
+        await qembed("Interaction Failed", "You need to be a server member to use this command!", "fail", ctx)
+        return
+    valid=validators.url(link)
+    if valid != True:
+        await qembed("Interaction Failed", "Sorry, it looks like your link is invalid. Please try with a real link (;", "fail", ctx)
+        return
+    await qembed("Link Updated", "Thanks for updating your link!", "success", ctx)
+    c.execute("UPDATE roster SET youtube = (?) WHERE user_id = (?)", [link, ctx.author.id])
+    con.commit()
+    await regenerate_roster_embeds()
+    
 ######################################################################################################
 
 #secret
