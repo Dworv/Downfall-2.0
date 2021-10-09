@@ -18,6 +18,7 @@ print("Bot Running!")
 client = discord.Client(intents=discord.Intents.all())
 slash = SlashCommand(client, sync_commands=True)
 
+
 guild_ids = [848362097968283668]
 
 #for connecting 
@@ -157,6 +158,7 @@ async def pfp(ctx):
         color=discord.Color.dark_blue()
     ).set_image(url=ctx.author.avatar_url)
     await ctx.send(embed=embed)
+
 @slash.slash(name="resources", 
             description="Command to get resources",
             guild_ids=guild_ids)
@@ -184,8 +186,6 @@ async def resources(ctx):
                                                                     create_button(style=ButtonStyle.URL, label="AE-EXPRESSION-SHAKE", url="https://drive.google.com/uc?export=download&id=1COCuV0hha1oAFG6e-Iyi7GtayRidvNOK")
                                                                     )
                                                                     ])
-
-    
 
 secret = botconfig.load_secret("C:/Users/Ryan/editing/Downfall_Editing_Bots/botconfig.toml", "converse")
 client.run(secret)
