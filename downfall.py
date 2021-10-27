@@ -139,7 +139,7 @@ def generate_resource_embed(type: int):
 def generate_help_components():
     c.execute("SELECT * FROM resources")
     commandCount = len(c.fetchall())
-    pageCount = commandCount//4
+    pageCount = (commandCount//4) - 1
     optionList = []
     for page in range(1, pageCount+1):
         optionList.append(create_select_option(f"Page {page}", str(page)))
